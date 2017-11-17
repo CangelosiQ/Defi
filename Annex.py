@@ -53,3 +53,38 @@ def get_data_tidied():
     meteo_y = df_tot[["tH2_obs"]]
     return meteo_quant, meteo_qual, meteo_date, meteo_y
 
+def load_test_set():
+    file='./../data_meteo/test.csv'
+    df = pd.read_csv(file, header=0, delimiter=";")
+    #print("Dimensions:",np.shape(df))
+    df['date']=df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
+    df['insee'] = df['insee'].astype('category')
+    df['mois'] = df['mois'].astype('category')
+    df['ddH10_rose4'] = df['ddH10_rose4'].astype('category')
+    df['ech'] = df['ech'].astype('category')
+    #df['flvis1SOL0'] = np.float64(df['flvis1SOL0'])
+    return df
+
+def convert_month_to_int(df):
+    df.mois=df.mois.astype('str')
+    df.mois[df.mois=='janvier']='1'
+    df.mois[df.mois=='février']='2'
+    df.mois[df.mois=='mars']='3'
+    df.mois[df.mois=='avril']='4'
+    df.mois[df.mois=='mai']='5'
+    df.mois[df.mois=='juin']='6'
+    df.mois[df.mois=='juillet']='7'
+    df.mois[df.mois=='août']='8'
+    df.mois[df.mois=='septembre']='9'
+    df.mois[df.mois=='octobre']='10'
+    df.mois[df.mois=='novembre']='11'
+    df.mois[df.mois=='décembre']='12'
+    df.mois=df.mois.astype('int')
+    return df
+
+def generate_submission_file(name, Y_PRED):
+    path='./../data_meteo/'
+    df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";",decimal=",")
+    df_template.tH2_obs=Y_PRED
+    df_template.to_csv(path+name,sep=';',decimal=',',index=False)
+    return 'File %s generated.' %(path+name)
