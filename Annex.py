@@ -144,4 +144,4 @@ def generate_submission_file(name, model, scaler, fillna_method):
     df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";",decimal=",")
     df_template.tH2_obs=Y_PRED
     df_template.to_csv(path+name,sep=';',decimal=',',index=False)
-return 'File %s generated.' %(path+name)
+    return 'File %s generated.' %(path+name)
