@@ -26,50 +26,69 @@ def open_and_transform(file):
     #print("Fichier",file," ouvert.")
     return df
 
+def get_data_imputed():
+    path='./../data_meteo/'
+    file='imputer_final.csv'
+    df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
+    return df
+    
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
     print('We are addressing your request.')
-    listdir('./../data_meteo/')
-    list_files=np.empty(36, dtype='|U12')
-    i=0
-    for fichier in listdir('./../data_meteo/'):
-        if 'train' in fichier:
-            list_files[i]=fichier
-            i=i+1
-    
-    df=pd.DataFrame()
-    for file in list_files:
-        df=pd.concat([df,open_and_transform(file)])
+    if impute_method is 'imputed':
+        df=get_data_imputed()
+        print('Data has been imported. Size:',df.shape)    
 
-    df=df.sort_values(by=['ech','date'],ascending=True)
-    print('Data has been imported. Size:',df.shape)    
+        if TrainTestSplit:
+            Y=df.iloc[:,-1]
+            X=df.iloc[:,:-2]
+            X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
+            print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
+
+    else:
+        listdir('./../data_meteo/')
+        list_files=np.empty(36, dtype='|U12')
+        i=0
+        for fichier in listdir('./../data_meteo/'):
+            if 'train' in fichier:
+                list_files[i]=fichier
+                i=i+1
         
-    if convert_month2int:
-        df=convert_month_to_int(df)
-        print('Months converted to int.')
-    
-    if add_dummies:
-        df_dummies=pd.get_dummies(df[var_dummies])
-        df=pd.concat([df,df_dummies],axis=1)
-        df=df.drop(var_dummies,axis=1)
-        print('Dummies added.')
-    
-    if date_method=='drop':
-        df=df.drop(['date'],axis=1)
-        print('Date dropped.')
+        df=pd.DataFrame()
+        for file in list_files:
+            df=pd.concat([df,open_and_transform(file)])
 
-    if impute_method=='drop':
-        N_before=df.shape[0]
-        df=df.dropna(axis=0)
-        N_after=df.shape[0]
-        print("%d data points deleted. %0.2f %s"%(N_before-N_after,(N_before-N_after)/N_before*100,'%'))
-    
-    if TrainTestSplit:
-        Y=df['tH2_obs']
-        X=df
-        X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
-        X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
-        print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
+        df=df.sort_values(by=['ech','date'],ascending=True)
+        print('Data has been imported. Size:',df.shape)    
+        
+        if convert_month2int:
+            df=convert_month_to_int(df)
+            print('Months converted to int.')
+        
+        if add_dummies:
+            df_dummies=pd.get_dummies(df[var_dummies])
+            df=pd.concat([df,df_dummies],axis=1)
+            df=df.drop(var_dummies,axis=1)
+            print('Dummies added.')
+        
+        if date_method=='drop':
+            df=df.drop(['date'],axis=1)
+            print('Date dropped.')
 
+        if impute_method=='drop':
+            N_before=df.shape[0]
+            df=df.dropna(axis=0)
+            N_after=df.shape[0]
+            print("%d data points deleted. %0.2f %s"%(N_before-N_after,(N_before-N_after)/N_before*100,'%'))
+        
+        if TrainTestSplit:
+            Y=df['tH2_obs']
+            X=df
+            X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
+            X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
+            print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
+
+        
+        
     if scale:
         scaler = StandardScaler()  
         scaler.fit(X_train)  
