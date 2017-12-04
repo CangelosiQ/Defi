@@ -105,7 +105,7 @@ def load_test_set():
     df['mois'] = df['mois'].astype('category')
     df['ddH10_rose4'] = df['ddH10_rose4'].astype('category')
     df['ech'] = df['ech'].astype('category')
-    #df['flvis1SOL0'] = np.float64(df['flvis1SOL0'])
+    df['flvis1SOL0'] = np.float64(df['flvis1SOL0'])
     return df
 
 def convert_month_to_int(df):
