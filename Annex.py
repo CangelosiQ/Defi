@@ -40,7 +40,7 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
 
         if TrainTestSplit:
             Y=df.iloc[:,-1]
-            X=df.iloc[:,:-2]
+            X=df.iloc[:,:-1]
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
 
