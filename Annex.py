@@ -14,8 +14,8 @@ from sklearn.model_selection import train_test_split
 
 def open_and_transform(file):
     path='./../data_meteo/'
-    #input_file='./../data_meteo/train_1.csv'
-    df = pd.read_csv(path+file, header=0, delimiter=";",decimal=",")
+    #input_file='./data_meteo/train_1.csv'
+    df = pd.read_csv(path+file, header=0, delimiter=";", decimal=",")
     #print("Dimensions:",np.shape(df))
     df['date']=df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
     df['insee'] = df['insee'].astype('category')
@@ -28,19 +28,24 @@ def open_and_transform(file):
 
 def get_data_imputed():
     path='./../data_meteo/'
-    file='imputer_final.csv'
-    df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
+    file='imputertest.csv'
+    df = pd.read_csv(path+file, delimiter=";",decimal=".")
+    df=df.iloc[:,1:]
     return df
     
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
     print('We are addressing your request.')
+    scaler=1
+
     if impute_method is 'imputed':
         df=get_data_imputed()
-        print('Data has been imported. Size:',df.shape)    
+        print('Data has been imported. Size:',df.shape)   
+      
 
         if TrainTestSplit:
             Y=df.iloc[:,-1]
             X=df.iloc[:,:-1]
+            print(X.columns)
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
 
@@ -88,7 +93,6 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
 
         
-        
     if scale:
         scaler = StandardScaler()  
         scaler.fit(X_train)  
@@ -96,7 +100,7 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         # Meme transformation sur le test
         X_test = scaler.transform(X_test)
         print('Data scaled')
-            
+     
     return X_train,X_test,Y_train,Y_test,scaler
 
 
@@ -117,14 +121,15 @@ def get_data_tidied():
 
 def load_test_set():
     file='./../data_meteo/test.csv'
-    df = pd.read_csv(file, header=0, delimiter=";")
+    df = pd.read_csv(file, header=0, delimiter=";", decimal=",")
     #print("Dimensions:",np.shape(df))
     df['date']=df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
     df['insee'] = df['insee'].astype('category')
     df['mois'] = df['mois'].astype('category')
     df['ddH10_rose4'] = df['ddH10_rose4'].astype('category')
     df['ech'] = df['ech'].astype('category')
-    df['flvis1SOL0'] = np.float64(df['flvis1SOL0'])
+    #df['flvis1SOL0'] = df['flvis1SOL0'].astype('float64')
+    df['flvis1SOL0']=pd.to_numeric(df['flvis1SOL0'].str.replace(',','.'))
     return df
 
 def convert_month_to_int(df):
@@ -144,9 +149,9 @@ def convert_month_to_int(df):
     df.mois=df.mois.astype('int')
     return df
 
-def generate_submission_file(name, model, scaler, fillna_method):
-    df_TEST=Annex.load_test_set()
-    df_TEST=Annex.convert_month_to_int(df_TEST)
+def generate_submission_file(name, model, scale, fillna_method):
+    df_TEST=load_test_set()
+    df_TEST=convert_month_to_int(df_TEST)
     df_dummies=pd.get_dummies(df_TEST[['insee']])
     df_TEST_full_qtt=pd.concat([df_TEST,df_dummies],axis=1)
     if fillna_method==True:
@@ -157,7 +162,12 @@ def generate_submission_file(name, model, scaler, fillna_method):
         df_TEST_full_qtt.rr1SOL0=df_TEST_full_qtt.rr1SOL0.fillna(0)
 
     df_TEST_full_qtt=df_TEST_full_qtt.drop(['insee','date'],axis=1)
-    X_TEST = scaler.transform(df_TEST_full_qtt)  
+    if scale:
+        scaler=StandardScaler()
+        scaler.fit(df_TEST_full_qtt)
+        X_TEST = scaler.transform(df_TEST_full_qtt)  
+    else:
+        X_TEST = df_TEST_full_qtt
     Y_PRED = model.predict(X_TEST)
     
     path='./../data_meteo/'
