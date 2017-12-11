@@ -2,7 +2,7 @@
 """
 Created on Mon Nov 13 15:29:19 2017
 
-@author: Quentin
+Defi
 """
 
 import numpy as np
@@ -60,33 +60,25 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         df=df.sort_values(by=['ech','date'],ascending=True)
         print('Data has been imported. Size:',df.shape)    
         
-        if convert_month2int:
-            df=convert_month_to_int(df)
-            print('Months converted to int.')
-        
-        if add_dummies:
-            df_dummies=pd.get_dummies(df[var_dummies])
-            df=pd.concat([df,df_dummies],axis=1)
-            df=df.drop(var_dummies,axis=1)
-            print('Dummies added.')
-        
-        if date_method=='drop':
-            df=df.drop(['date'],axis=1)
-            print('Date dropped.')
-
+        df=data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method)
+            
         if impute_method=='drop':
             N_before=df.shape[0]
             df=df.dropna(axis=0)
             N_after=df.shape[0]
             print("%d data points deleted. %0.2f %s"%(N_before-N_after,(N_before-N_after)/N_before*100,'%'))
         
-        if TrainTestSplit:
-            Y=df['tH2_obs']
-            X=df
-            X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
+        Y=df['tH2_obs']
+        X=df
+        X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
+        if TrainTestSplit:    
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
-
+        else:
+            X_train=X
+            Y_train=Y
+            X_test=None
+            Y_test=None
         
         
     if scale:
@@ -96,10 +88,32 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         # Meme transformation sur le test
         X_test = scaler.transform(X_test)
         print('Data scaled')
+    else:
+        scaler=None
             
     return X_train,X_test,Y_train,Y_test,scaler
 
 
+def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method):
+    if convert_month2int:
+       df=convert_month_to_int(df)
+        print('Months converted to int.')
+    
+    if add_dummies:
+        df_dummies=pd.get_dummies(df[var_dummies])
+        df=pd.concat([df,df_dummies],axis=1)
+        df=df.drop(var_dummies,axis=1)
+        print('Dummies added.')
+    
+    if date_method=='drop':
+        df=df.drop(['date'],axis=1)
+        print('Date dropped.')
+    else: 
+        if date_method is 'week_number':
+            df.date=df.date.apply(lambda x: dt.datetime.strftime(x,"%U"))
+            df.date=df.date.astype('int64')
+            print('Date transformed in week number.')
+    return df
     
     
     
@@ -144,11 +158,10 @@ def convert_month_to_int(df):
     df.mois=df.mois.astype('int')
     return df
 
-def generate_submission_file(name, model, scaler, fillna_method):
+def generate_submission_file(name, model, scaler, add_dummies, var_dummies, convert_month2int=False, date_method='drop' fillna_method='zeros' ):
     df_TEST=Annex.load_test_set()
-    df_TEST=Annex.convert_month_to_int(df_TEST)
-    df_dummies=pd.get_dummies(df_TEST[['insee']])
-    df_TEST_full_qtt=pd.concat([df_TEST,df_dummies],axis=1)
+    df_TEST=data_preprocessing(df_TEST, convert_month2int, add_dummies, var_dummies, date_method)
+    
     if fillna_method==True:
         df_TEST_full_qtt.flir1SOL0=df_TEST_full_qtt.flir1SOL0.fillna(0)
         df_TEST_full_qtt.fllat1SOL0=df_TEST_full_qtt.fllat1SOL0.fillna(0)
@@ -156,7 +169,6 @@ def generate_submission_file(name, model, scaler, fillna_method):
         df_TEST_full_qtt.flvis1SOL0=df_TEST_full_qtt.flvis1SOL0.fillna(0)
         df_TEST_full_qtt.rr1SOL0=df_TEST_full_qtt.rr1SOL0.fillna(0)
 
-    df_TEST_full_qtt=df_TEST_full_qtt.drop(['insee','date'],axis=1)
     X_TEST = scaler.transform(df_TEST_full_qtt)  
     Y_PRED = model.predict(X_TEST)
     
