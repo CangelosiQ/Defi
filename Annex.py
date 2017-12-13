@@ -174,7 +174,7 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
         df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
         df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
 
-    if scaler=None:
+    if scaler is None:
         X_TEST = df_TEST  
     else:
         X_TEST = scaler.transform(df_TEST)  
