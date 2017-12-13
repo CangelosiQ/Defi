@@ -97,7 +97,7 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
 def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method):
     if convert_month2int:
        df=convert_month_to_int(df)
-        print('Months converted to int.')
+       print('Months converted to int.')
     
     if add_dummies:
         df_dummies=pd.get_dummies(df[var_dummies])
@@ -158,7 +158,7 @@ def convert_month_to_int(df):
     df.mois=df.mois.astype('int')
     return df
 
-def generate_submission_file(name, model, scaler, add_dummies, var_dummies, convert_month2int=False, date_method='drop' fillna_method='zeros' ):
+def generate_submission_file(name, model, scaler, add_dummies, var_dummies, convert_month2int=False, date_method='drop', fillna_method='zeros' ):
     df_TEST=Annex.load_test_set()
     df_TEST=data_preprocessing(df_TEST, convert_month2int, add_dummies, var_dummies, date_method)
     
