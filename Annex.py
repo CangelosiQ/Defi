@@ -96,7 +96,7 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
     else:
         scaler=None
             
-    return X_train,X_test,Y_train,Y_test,scaler
+    return X_train,X_test,Y_train,Y_test, X, Y, scaler
 
 
 def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method):
