@@ -109,7 +109,7 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
                 if df[var].dtypes.type is not pd.core.dtypes.dtypes.CategoricalDtypeType:
                 #    print(df[var].dtypes.type)
                     df[var]=df[var].astype('category')
-                    print('Feature %s converted in category type.'%var)
+                    print('Feature %s converted into categorical type.'%var)
 
         df_dummies=pd.get_dummies(df[var_dummies])
         df=pd.concat([df,df_dummies],axis=1)
