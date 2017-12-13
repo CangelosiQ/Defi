@@ -36,6 +36,7 @@ Methods_names={LinearSVC:"LinearSVC",
          LogisticRegression:"LogisticRegression",
          XGBClassifier:"XGBClassifier",
          MLPClassifier:"MLPClassifier",
+         MLPRegressor:"MLPRegressor",
          RandomForestClassifier:"RandomForestClassifier",
          AdaBoostClassifier:"AdaBoostClassifier", 
          GradientBoostingClassifier:"GradientBoostingClassifier",
@@ -47,6 +48,7 @@ Methods={"LinearSVC":LinearSVC,
          "LogisticRegression":LogisticRegression,
          "XGBClassifier":XGBClassifier,
          "MLPClassifier":MLPClassifier,
+         "MLPRegressor":MLPRegressor,
          "RandomForestClassifier":RandomForestClassifier,
          "AdaBoostClassifier":AdaBoostClassifier, 
          "GradientBoostingClassifier":GradientBoostingClassifier,
@@ -455,6 +457,31 @@ def get_param_choices(method):
             "beta_2":[0.999], 
             "epsilon":[1e-08]
         }]
+    
+    if method is MLPRegressor:
+        param=[{"hidden_layer_sizes":nn_hidden_space(5),
+            "activation":['relu','logistic','tanh'],
+            "solver":['adam'], 
+            "alpha":[0.0001], 
+            "batch_size":['auto'], 
+            "learning_rate":['constant'], 
+            "learning_rate_init":[0.001,0.01], 
+            "power_t":[0.5],    
+            "max_iter":[200], 
+            "shuffle":[True], 
+            "random_state":[None], 
+            "tol":[0.0001], 
+            "verbose":[False], 
+            "warm_start":[False], 
+            "momentum":[0.9,0.8,0.95], 
+            "nesterovs_momentum":[True], 
+            "early_stopping":[False,True], 
+            "validation_fraction":[0.1], 
+            "beta_1":[0.9], 
+            "beta_2":[0.999], 
+            "epsilon":[1e-08]
+        }]
+    
     if method is RandomForestClassifier:
         param=[{"n_estimators":range(10,200,20),
             "criterion":['gini','entropy'],
