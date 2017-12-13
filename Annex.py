@@ -12,6 +12,8 @@ from os import listdir
 from sklearn.preprocessing import StandardScaler  
 from sklearn.model_selection import train_test_split
 
+pd.options.mode.chained_assignment = None
+
 def open_and_transform(file):
     path='./../data_meteo/'
     #input_file='./../data_meteo/train_1.csv'
@@ -28,8 +30,9 @@ def open_and_transform(file):
 
 def get_data_imputed():
     path='./../data_meteo/'
-    file='imputer_final.csv'
+    file='imputertest.csv'
     df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
+    df=df.iloc[:,1:]
     return df
     
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
@@ -73,6 +76,8 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
         if TrainTestSplit:    
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
+            X_train.columns=X.columns
+            X_test.columns=X.columns
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
         else:
             X_train=X
@@ -99,7 +104,7 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
        df=convert_month_to_int(df)
        print('Months converted to int.')
     
-    if add_dummies:
+    if add_dummies: ## si la catégorie n'est pas de type catégorie alors le changer en catégory pour pouvoir faire les dummies
         df_dummies=pd.get_dummies(df[var_dummies])
         df=pd.concat([df,df_dummies],axis=1)
         df=df.drop(var_dummies,axis=1)
@@ -159,17 +164,17 @@ def convert_month_to_int(df):
     return df
 
 def generate_submission_file(name, model, scaler, add_dummies, var_dummies, convert_month2int=False, date_method='drop', fillna_method='zeros' ):
-    df_TEST=Annex.load_test_set()
+    df_TEST=load_test_set()
     df_TEST=data_preprocessing(df_TEST, convert_month2int, add_dummies, var_dummies, date_method)
     
-    if fillna_method==True:
-        df_TEST_full_qtt.flir1SOL0=df_TEST_full_qtt.flir1SOL0.fillna(0)
-        df_TEST_full_qtt.fllat1SOL0=df_TEST_full_qtt.fllat1SOL0.fillna(0)
-        df_TEST_full_qtt.flsen1SOL0=df_TEST_full_qtt.flsen1SOL0.fillna(0)
-        df_TEST_full_qtt.flvis1SOL0=df_TEST_full_qtt.flvis1SOL0.fillna(0)
-        df_TEST_full_qtt.rr1SOL0=df_TEST_full_qtt.rr1SOL0.fillna(0)
+    if fillna_method=='zeros':
+        df_TEST.flir1SOL0=df_TEST.flir1SOL0.fillna(0)
+        df_TEST.fllat1SOL0=df_TEST.fllat1SOL0.fillna(0)
+        df_TEST.flsen1SOL0=df_TEST.flsen1SOL0.fillna(0)
+        df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
+        df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
 
-    X_TEST = scaler.transform(df_TEST_full_qtt)  
+    X_TEST = scaler.transform(df_TEST)  
     Y_PRED = model.predict(X_TEST)
     
     path='./../data_meteo/'
