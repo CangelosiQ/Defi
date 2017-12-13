@@ -174,7 +174,11 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
         df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
         df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
 
-    X_TEST = scaler.transform(df_TEST)  
+    if scaler=None:
+        X_TEST = df_TEST  
+    else:
+        X_TEST = scaler.transform(df_TEST)  
+        
     Y_PRED = model.predict(X_TEST)
     
     path='./../data_meteo/'
