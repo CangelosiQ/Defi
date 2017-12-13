@@ -104,7 +104,13 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
        df=convert_month_to_int(df)
        print('Months converted to int.')
     
-    if add_dummies: ## si la catégorie n'est pas de type catégorie alors le changer en catégory pour pouvoir faire les dummies
+    if add_dummies: 
+        for var in var_dummies:
+                if df[var].dtypes.type is not pd.core.dtypes.dtypes.CategoricalDtypeType:
+                #    print(df[var].dtypes.type)
+                    df[var]=df[var].astype('category')
+                    print('Feature %s converted in category type.'%var)
+
         df_dummies=pd.get_dummies(df[var_dummies])
         df=pd.concat([df,df_dummies],axis=1)
         df=df.drop(var_dummies,axis=1)
