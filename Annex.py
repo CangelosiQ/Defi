@@ -2,7 +2,7 @@
 """
 Created on Mon Nov 13 15:29:19 2017
 
-@author: Quentin
+Defi
 """
 
 import numpy as np
@@ -12,10 +12,12 @@ from os import listdir
 from sklearn.preprocessing import StandardScaler  
 from sklearn.model_selection import train_test_split
 
+pd.options.mode.chained_assignment = None
+
 def open_and_transform(file):
     path='./../data_meteo/'
-    #input_file='./data_meteo/train_1.csv'
-    df = pd.read_csv(path+file, header=0, delimiter=";", decimal=",")
+    #input_file='./../data_meteo/train_1.csv'
+    df = pd.read_csv(path+file, header=0, delimiter=";",decimal=",")
     #print("Dimensions:",np.shape(df))
     df['date']=df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
     df['insee'] = df['insee'].astype('category')
@@ -29,23 +31,19 @@ def open_and_transform(file):
 def get_data_imputed():
     path='./../data_meteo/'
     file='imputertest.csv'
-    df = pd.read_csv(path+file, delimiter=";",decimal=".")
+    df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
     df=df.iloc[:,1:]
     return df
     
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
     print('We are addressing your request.')
-    scaler=1
-
     if impute_method is 'imputed':
         df=get_data_imputed()
-        print('Data has been imported. Size:',df.shape)   
-      
+        print('Data has been imported. Size:',df.shape)    
 
         if TrainTestSplit:
             Y=df.iloc[:,-1]
             X=df.iloc[:,:-1]
-            print(X.columns)
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
 
@@ -65,33 +63,28 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         df=df.sort_values(by=['ech','date'],ascending=True)
         print('Data has been imported. Size:',df.shape)    
         
-        if convert_month2int:
-            df=convert_month_to_int(df)
-            print('Months converted to int.')
-        
-        if add_dummies:
-            df_dummies=pd.get_dummies(df[var_dummies])
-            df=pd.concat([df,df_dummies],axis=1)
-            df=df.drop(var_dummies,axis=1)
-            print('Dummies added.')
-        
-        if date_method=='drop':
-            df=df.drop(['date'],axis=1)
-            print('Date dropped.')
-
+        df=data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method)
+            
         if impute_method=='drop':
             N_before=df.shape[0]
             df=df.dropna(axis=0)
             N_after=df.shape[0]
             print("%d data points deleted. %0.2f %s"%(N_before-N_after,(N_before-N_after)/N_before*100,'%'))
         
-        if TrainTestSplit:
-            Y=df['tH2_obs']
-            X=df
-            X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
+        Y=df['tH2_obs']
+        X=df
+        X=X.drop(['tH2_obs'],axis=1) ## !!! Date?
+        if TrainTestSplit:    
             X_train,X_test,Y_train,Y_test=train_test_split(X,Y,test_size=sz_test,random_state=11)
+            X_train.columns=X.columns
+            X_test.columns=X.columns
             print('Train size: %d, Test size: %d'%(X_train.shape[0],X_test.shape[0]))
-
+        else:
+            X_train=X
+            Y_train=Y
+            X_test=None
+            Y_test=None
+        
         
     if scale:
         scaler = StandardScaler()  
@@ -100,10 +93,32 @@ def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,
         # Meme transformation sur le test
         X_test = scaler.transform(X_test)
         print('Data scaled')
-     
+    else:
+        scaler=None
+            
     return X_train,X_test,Y_train,Y_test,scaler
 
 
+def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_method):
+    if convert_month2int:
+       df=convert_month_to_int(df)
+       print('Months converted to int.')
+    
+    if add_dummies: ## si la catégorie n'est pas de type catégorie alors le changer en catégory pour pouvoir faire les dummies
+        df_dummies=pd.get_dummies(df[var_dummies])
+        df=pd.concat([df,df_dummies],axis=1)
+        df=df.drop(var_dummies,axis=1)
+        print('Dummies added.')
+    
+    if date_method=='drop':
+        df=df.drop(['date'],axis=1)
+        print('Date dropped.')
+    else: 
+        if date_method is 'week_number':
+            df.date=df.date.apply(lambda x: dt.datetime.strftime(x,"%U"))
+            df.date=df.date.astype('int64')
+            print('Date transformed in week number.')
+    return df
     
     
     
@@ -121,15 +136,14 @@ def get_data_tidied():
 
 def load_test_set():
     file='./../data_meteo/test.csv'
-    df = pd.read_csv(file, header=0, delimiter=";", decimal=",")
+    df = pd.read_csv(file, header=0, delimiter=";")
     #print("Dimensions:",np.shape(df))
     df['date']=df['date'].apply(lambda x: dt.datetime.strptime(x, '%Y-%m-%d'))
     df['insee'] = df['insee'].astype('category')
     df['mois'] = df['mois'].astype('category')
     df['ddH10_rose4'] = df['ddH10_rose4'].astype('category')
     df['ech'] = df['ech'].astype('category')
-    #df['flvis1SOL0'] = df['flvis1SOL0'].astype('float64')
-    df['flvis1SOL0']=pd.to_numeric(df['flvis1SOL0'].str.replace(',','.'))
+    df['flvis1SOL0'] = np.float64(df['flvis1SOL0'])
     return df
 
 def convert_month_to_int(df):
@@ -149,25 +163,18 @@ def convert_month_to_int(df):
     df.mois=df.mois.astype('int')
     return df
 
-def generate_submission_file(name, model, scale, fillna_method):
+def generate_submission_file(name, model, scaler, add_dummies, var_dummies, convert_month2int=False, date_method='drop', fillna_method='zeros' ):
     df_TEST=load_test_set()
-    df_TEST=convert_month_to_int(df_TEST)
-    df_dummies=pd.get_dummies(df_TEST[['insee']])
-    df_TEST_full_qtt=pd.concat([df_TEST,df_dummies],axis=1)
-    if fillna_method==True:
-        df_TEST_full_qtt.flir1SOL0=df_TEST_full_qtt.flir1SOL0.fillna(0)
-        df_TEST_full_qtt.fllat1SOL0=df_TEST_full_qtt.fllat1SOL0.fillna(0)
-        df_TEST_full_qtt.flsen1SOL0=df_TEST_full_qtt.flsen1SOL0.fillna(0)
-        df_TEST_full_qtt.flvis1SOL0=df_TEST_full_qtt.flvis1SOL0.fillna(0)
-        df_TEST_full_qtt.rr1SOL0=df_TEST_full_qtt.rr1SOL0.fillna(0)
+    df_TEST=data_preprocessing(df_TEST, convert_month2int, add_dummies, var_dummies, date_method)
+    
+    if fillna_method=='zeros':
+        df_TEST.flir1SOL0=df_TEST.flir1SOL0.fillna(0)
+        df_TEST.fllat1SOL0=df_TEST.fllat1SOL0.fillna(0)
+        df_TEST.flsen1SOL0=df_TEST.flsen1SOL0.fillna(0)
+        df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
+        df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
 
-    df_TEST_full_qtt=df_TEST_full_qtt.drop(['insee','date'],axis=1)
-    if scale:
-        scaler=StandardScaler()
-        scaler.fit(df_TEST_full_qtt)
-        X_TEST = scaler.transform(df_TEST_full_qtt)  
-    else:
-        X_TEST = df_TEST_full_qtt
+    X_TEST = scaler.transform(df_TEST)  
     Y_PRED = model.predict(X_TEST)
     
     path='./../data_meteo/'
