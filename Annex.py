@@ -11,6 +11,7 @@ import datetime as dt
 from os import listdir
 from sklearn.preprocessing import StandardScaler  
 from sklearn.model_selection import train_test_split
+from predictive_imputer import predictive_imputer
 
 pd.options.mode.chained_assignment = None
 
@@ -28,19 +29,19 @@ def open_and_transform(file):
     #print("Fichier",file," ouvert.")
     return df
 
-def get_data_imputed():
+def get_data_imputed(file):
     path='./../data_meteo/'
-    file='imputertest.csv'
-    df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
+    df = pd.read_csv(path+file+'.csv', header=None, delimiter=";",decimal=".")
     df=df.iloc[:,1:]
     return df
     
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
     print('We are addressing your request.')
-    if impute_method is 'imputed':
-        df=get_data_imputed()
+    if impute_method is not 'drop':
+        df=get_data_imputed(impute_method)
         print('Data has been imported. Size:',df.shape)    
-
+        
+        
         if TrainTestSplit:
             Y=df.iloc[:,-1]
             X=df.iloc[:,:-1]
@@ -179,16 +180,43 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
         df_TEST.flsen1SOL0=df_TEST.flsen1SOL0.fillna(0)
         df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
         df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
-
+    if fillna_method=='imputer':
+        #imputer = predictive_imputer.PredictiveImputer(f_model="RandomForest")
+        #df_TEST = imputer.fit(df_TEST).transform(df_TEST)
+        #np.savetxt('./../data_meteo/test_data_imputed.csv',df_TEST, delimiter=';')
+        df_TEST=np.loadtxt('./../data_meteo/test_data_imputed.csv', delimiter=';')
     if scaler is None:
         X_TEST = df_TEST  
     else:
         X_TEST = scaler.transform(df_TEST)  
         
-    Y_PRED = model.predict(X_TEST)
+    if type(model) is list:
+        n_models=len(model)-1
+        ypreds=[]
+        for m in model[:-1]:
+            ypred=m.predict(X_TEST)
+            ypreds.append(ypred.reshape(len(ypred),1))
+        L=len(ypreds[0])
+        X_super_TEST=np.concatenate(ypreds,axis=1)
+        Y_PRED=model[-1].predict(X_super_TEST)
+    else:
+        Y_PRED = model.predict(X_TEST)
     
     path='./../data_meteo/'
-    df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";",decimal=",")
+    df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";")
     df_template.tH2_obs=Y_PRED
     df_template.to_csv(path+name,sep=';',decimal=',',index=False)
+    return 'File %s generated.' %(path+name)
+    
+def combine_submission_files(name, names):
+    path='./../data_meteo/'
+    dfs=[]
+    for n in names:
+        df=pd.read_csv(path+n, header=0, delimiter=";",decimal=",")
+        dfs.append(df.iloc[:,-1])
+        print(dfs[-1].shape)
+    prevision=pd.DataFrame(np.mean(dfs,axis=0))
+    df.tH2_obs=prevision
+    print(df.shape)
+    df.to_csv(path+name,sep=';',decimal=',',index=False)
     return 'File %s generated.' %(path+name)
