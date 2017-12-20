@@ -11,6 +11,7 @@ import datetime as dt
 from os import listdir
 from sklearn.preprocessing import StandardScaler  
 from sklearn.model_selection import train_test_split
+#from predictive_imputer import predictive_imputer
 
 pd.options.mode.chained_assignment = None
 
@@ -28,19 +29,19 @@ def open_and_transform(file):
     #print("Fichier",file," ouvert.")
     return df
 
-def get_data_imputed():
+def get_data_imputed(file):
     path='./../data_meteo/'
-    file='imputertest.csv'
-    df = pd.read_csv(path+file, header=None, delimiter=";",decimal=".")
+    df = pd.read_csv(path+file+'.csv', header=None, delimiter=";",decimal=".")
     df=df.iloc[:,1:]
     return df
     
 def get_data_raw(scale, add_dummies,var_dummies,TrainTestSplit=True,sz_test=0.3,impute_method='drop',convert_month2int=False,date_method='drop'):
     print('We are addressing your request.')
-    if impute_method is 'imputed':
-        df=get_data_imputed()
+    if impute_method is not 'drop':
+        df=get_data_imputed(impute_method)
         print('Data has been imported. Size:',df.shape)    
-
+        
+        
         if TrainTestSplit:
             Y=df.iloc[:,-1]
             X=df.iloc[:,:-1]
@@ -104,7 +105,13 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
        df=convert_month_to_int(df)
        print('Months converted to int.')
     
-    if add_dummies: ## si la catégorie n'est pas de type catégorie alors le changer en catégory pour pouvoir faire les dummies
+    if add_dummies: 
+        for var in var_dummies:
+                if df[var].dtypes.type is not pd.core.dtypes.dtypes.CategoricalDtypeType:
+                #    print(df[var].dtypes.type)
+                    df[var]=df[var].astype('category')
+                    print('Feature %s converted into categorical type.'%var)
+
         df_dummies=pd.get_dummies(df[var_dummies])
         df=pd.concat([df,df_dummies],axis=1)
         df=df.drop(var_dummies,axis=1)
@@ -114,10 +121,16 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
         df=df.drop(['date'],axis=1)
         print('Date dropped.')
     else: 
-        if date_method is 'week_number':
+        if date_method in ['week_number','week_circle']:
             df.date=df.date.apply(lambda x: dt.datetime.strftime(x,"%U"))
             df.date=df.date.astype('int64')
-            print('Date transformed in week number.')
+            if date_method is 'week_circle':
+                df['cosdate']=np.cos(2*np.pi*df.date/52)
+                df['sindate']=np.sin(2*np.pi*df.date/52)
+                df=df.drop(['date'],axis=1)
+                print('Date transformed in a projection of the week number on a circle.')
+            else:
+                print('Date transformed in week number.')
     return df
     
     
@@ -173,16 +186,46 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
         df_TEST.flsen1SOL0=df_TEST.flsen1SOL0.fillna(0)
         df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
         df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
-
-    if scaler==None:
+    if fillna_method=='imputer':
+        # imputer = predictive_imputer.PredictiveImputer(f_model="RandomForest")
+        # df_TEST = imputer.fit(df_TEST).transform(df_TEST)
+        # np.savetxt('./../data_meteo/test_data_imputed_weekcircle.csv',df_TEST, delimiter=';')
+        df_TEST=np.loadtxt('./../data_meteo/test_data_imputed_weekcircle.csv', delimiter=';')
+    if scaler is None:
         X_TEST = df_TEST  
     else:
         X_TEST = scaler.transform(df_TEST)  
         
-    Y_PRED = model.predict(X_TEST)
-    
+    if type(model) is list:
+        n_models=len(model)-1
+        ypreds=[]
+        for m in model[:-1]:
+            ypred=m.predict(X_TEST)
+            ypreds.append(ypred.reshape(len(ypred),1))
+        L=len(ypreds[0])
+        X_super_TEST=np.concatenate(ypreds,axis=1)
+        if model[-1] is None:
+            Y_PRED=X_super_TEST.mean(axis=1)
+        else:    
+            Y_PRED=model[-1].predict(X_super_TEST)
+    else:
+        Y_PRED = model.predict(X_TEST)
+    print(Y_PRED.shape)
     path='./../data_meteo/'
-    df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";",decimal=",")
+    df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";")
     df_template.tH2_obs=Y_PRED
     df_template.to_csv(path+name,sep=';',decimal=',',index=False)
+    return 'File %s generated.' %(path+name)
+    
+def combine_submission_files(name, names):
+    path='./../data_meteo/'
+    dfs=[]
+    for n in names:
+        df=pd.read_csv(path+n, header=0, delimiter=";",decimal=",")
+        dfs.append(df.iloc[:,-1])
+        print(dfs[-1].shape)
+    prevision=pd.DataFrame(np.mean(dfs,axis=0))
+    df.tH2_obs=prevision
+    print(df.shape)
+    df.to_csv(path+name,sep=';',decimal=',',index=False)
     return 'File %s generated.' %(path+name)
