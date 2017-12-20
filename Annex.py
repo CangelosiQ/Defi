@@ -11,6 +11,9 @@ import datetime as dt
 from os import listdir
 from sklearn.preprocessing import StandardScaler  
 from sklearn.model_selection import train_test_split
+import sys
+sys.append('./predictive_imputer-0.2.0/')
+sys.append('./predictive_imputer-0.2.0/predictive_imputer/')
 from predictive_imputer import predictive_imputer
 
 pd.options.mode.chained_assignment = None
