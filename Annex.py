@@ -121,10 +121,16 @@ def data_preprocessing(df, convert_month2int, add_dummies, var_dummies, date_met
         df=df.drop(['date'],axis=1)
         print('Date dropped.')
     else: 
-        if date_method is 'week_number':
+        if date_method in ['week_number','week_circle']:
             df.date=df.date.apply(lambda x: dt.datetime.strftime(x,"%U"))
             df.date=df.date.astype('int64')
-            print('Date transformed in week number.')
+            if date_method is 'week_circle':
+                df['cosdate']=np.cos(2*np.pi*df.date/52)
+                df['sindate']=np.sin(2*np.pi*df.date/52)
+                df=df.drop(['date'],axis=1)
+                print('Date transformed in a projection of the week number on a circle.')
+            else:
+                print('Date transformed in week number.')
     return df
     
     
@@ -181,10 +187,10 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
         df_TEST.flvis1SOL0=df_TEST.flvis1SOL0.fillna(0)
         df_TEST.rr1SOL0=df_TEST.rr1SOL0.fillna(0)
     if fillna_method=='imputer':
-        #imputer = predictive_imputer.PredictiveImputer(f_model="RandomForest")
-        #df_TEST = imputer.fit(df_TEST).transform(df_TEST)
-        #np.savetxt('./../data_meteo/test_data_imputed.csv',df_TEST, delimiter=';')
-        df_TEST=np.loadtxt('./../data_meteo/test_data_imputed.csv', delimiter=';')
+        # imputer = predictive_imputer.PredictiveImputer(f_model="RandomForest")
+        # df_TEST = imputer.fit(df_TEST).transform(df_TEST)
+        # np.savetxt('./../data_meteo/test_data_imputed_weekcircle.csv',df_TEST, delimiter=';')
+        df_TEST=np.loadtxt('./../data_meteo/test_data_imputed_weekcircle.csv', delimiter=';')
     if scaler is None:
         X_TEST = df_TEST  
     else:
@@ -198,10 +204,13 @@ def generate_submission_file(name, model, scaler, add_dummies, var_dummies, conv
             ypreds.append(ypred.reshape(len(ypred),1))
         L=len(ypreds[0])
         X_super_TEST=np.concatenate(ypreds,axis=1)
-        Y_PRED=model[-1].predict(X_super_TEST)
+        if model[-1] is None:
+            Y_PRED=X_super_TEST.mean(axis=1)
+        else:    
+            Y_PRED=model[-1].predict(X_super_TEST)
     else:
         Y_PRED = model.predict(X_TEST)
-    
+    print(Y_PRED.shape)
     path='./../data_meteo/'
     df_template=pd.read_csv('./../data_meteo/test_answer_template.csv', header=0, delimiter=";")
     df_template.tH2_obs=Y_PRED
